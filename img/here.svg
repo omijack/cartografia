@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" role="img" aria-labelledby="t d">
+  <title id="t">Here</title><desc id="d">Una habitació conté finestres de temps superposades.</desc>
+  <rect width="1200" height="900" fill="#d8dbc8"/><path d="M0 0h1200v900H0zM150 100v640h900V100" fill="#bcc9c3" stroke="#354650" stroke-width="12"/>
+  <path d="M600 100v640M150 520h900" stroke="#354650" stroke-width="8"/><path d="m150 740 450-220 450 220" fill="#a8a08d" stroke="#354650" stroke-width="8"/>
+  <g stroke="#17232b" stroke-width="7"><rect x="225" y="185" width="270" height="210" fill="#ef8354"/><rect x="670" y="250" width="310" height="190" fill="#e6c75c"/><rect x="430" y="480" width="260" height="190" fill="#5bc0be"/></g>
+  <g fill="#17232b" font-family="Georgia" font-weight="bold"><text x="250" y="235" font-size="34">1957</text><text x="695" y="300" font-size="34">10,000 BCE</text><text x="455" y="530" font-size="34">2014</text></g>
+  <text x="600" y="840" text-anchor="middle" fill="#17232b" font-family="Georgia" font-size="112" font-weight="bold">HERE</text>
+</svg>

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" role="img" aria-labelledby="t d">
+  <title id="t">The Boat</title><desc id="d">Una petita barca entre onades estilitzades.</desc>
+  <rect width="1200" height="900" fill="#0a1721"/><circle cx="860" cy="190" r="105" fill="#f0d9a5" opacity=".88"/>
+  <g fill="none" stroke-linecap="round"><path d="M-80 540c190-160 310 160 500 0s310 160 500 0 310 160 500 0" stroke="#27586c" stroke-width="95"/><path d="M-60 690c190-150 310 150 500 0s310 150 500 0 310 150 500 0" stroke="#39788b" stroke-width="88"/><path d="M-40 815c190-120 310 120 500 0s310 120 500 0 310 120 500 0" stroke="#5bc0be" stroke-width="70"/></g>
+  <path d="M395 480h390l-85 145H475Z" fill="#ef8354" stroke="#f5e8cc" stroke-width="9"/><path d="M590 475V230l150 245Z" fill="#f5e8cc" stroke="#f5e8cc" stroke-width="7"/>
+  <text x="160" y="180" fill="#f5e8cc" font-family="Georgia" font-size="96" font-weight="bold">THE BOAT</text>
+</svg>

@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="ca">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Cartografia interactiva del còmic expandit">
+    <title>Cartografia del còmic expandit</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+  </head>
+  <body>
+    <a class="skip-link" href="#visualization">Salta a la visualització</a>
+
+    <header class="site-header">
+      <div>
+        <p class="eyebrow">Projecte de recerca doctoral</p>
+        <h1>Cartografia del còmic expandit</h1>
+      </div>
+      <div class="view-switcher" role="group" aria-label="Tipus de visualització">
+        <button class="view-button is-active" type="button" data-view="graph" aria-pressed="true">
+          <span aria-hidden="true">◌</span> Xarxa
+        </button>
+        <button class="view-button" type="button" data-view="timeline" aria-pressed="false">
+          <span aria-hidden="true">↦</span> Cronologia
+        </button>
+      </div>
+    </header>
+
+    <main class="app-shell">
+      <aside class="sidebar" aria-label="Controls i informació">
+        <section class="control-panel" aria-labelledby="filters-title">
+          <div class="section-heading">
+            <div>
+              <p class="section-kicker">Explora</p>
+              <h2 id="filters-title">Filtres</h2>
+            </div>
+            <button id="clear-filters" class="text-button" type="button">Neteja</button>
+          </div>
+
+          <label class="field">
+            <span>Cerca</span>
+            <span class="search-control">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.35-4.35m2.35-5.65a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z"/></svg>
+              <input id="search" type="search" placeholder="Títol, tècnica..." autocomplete="off">
+            </span>
+          </label>
+
+          <label class="field">
+            <span>Tipus</span>
+            <select id="filter-type"><option value="all">Tots els tipus</option></select>
+          </label>
+
+          <label class="field">
+            <span>Categoria</span>
+            <select id="filter-category"><option value="all">Totes les categories</option></select>
+          </label>
+
+          <label class="field">
+            <span>Època</span>
+            <select id="filter-epoch"><option value="all">Totes les èpoques</option></select>
+          </label>
+
+          <p id="result-count" class="result-count" aria-live="polite">Carregant el corpus…</p>
+          <div id="legend" class="legend" aria-label="Llegenda de categories"></div>
+        </section>
+
+        <section id="info-panel" class="info-panel" aria-labelledby="panel-title">
+          <div id="empty-state" class="empty-state">
+            <span class="empty-mark" aria-hidden="true">✦</span>
+            <h2 id="panel-title">Descobreix el corpus</h2>
+            <p>Selecciona un node per veure’n la fitxa, la imatge i les connexions.</p>
+          </div>
+
+          <div id="profile" class="profile" hidden>
+            <button id="panel-image-button" class="panel-image-button" type="button" aria-label="Obre la imatge ampliada">
+              <img id="panel-image" src="" alt="">
+              <span>Amplia la imatge</span>
+            </button>
+            <div class="profile-copy">
+              <p id="panel-category" class="profile-category"></p>
+              <h2 id="profile-title"></h2>
+              <p id="panel-description" class="profile-description"></p>
+              <dl class="metadata">
+                <div><dt>Tipus</dt><dd id="panel-type"></dd></div>
+                <div><dt>Època</dt><dd id="panel-epoch"></dd></div>
+                <div><dt>Tècnica</dt><dd id="panel-technique"></dd></div>
+              </dl>
+              <div class="connections">
+                <h3>Connexions</h3>
+                <ul id="panel-connections-list"></ul>
+              </div>
+            </div>
+          </div>
+        </section>
+      </aside>
+
+      <section id="visualization" class="visualization" aria-label="Cartografia interactiva" tabindex="-1">
+        <div class="canvas-toolbar">
+          <p id="view-description">Relacions entre obres, autories, corrents i tècniques</p>
+          <button id="reset-view" class="icon-button" type="button" title="Centra la visualització" aria-label="Centra la visualització">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+          </button>
+        </div>
+        <svg id="graph" role="img" aria-labelledby="graph-title graph-description">
+          <title id="graph-title">Xarxa del còmic expandit</title>
+          <desc id="graph-description">Graf interactiu. Utilitza el tabulador per recórrer els nodes i Retorn per obrir una obra.</desc>
+        </svg>
+        <div id="tooltip" class="tooltip" role="tooltip" hidden></div>
+        <div id="loading" class="loading" role="status">
+          <span class="loader" aria-hidden="true"></span>
+          <span>Construint la cartografia…</span>
+        </div>
+        <div id="no-results" class="no-results" hidden>
+          <span aria-hidden="true">∅</span>
+          <h2>Cap coincidència</h2>
+          <p>Prova una altra combinació de filtres.</p>
+        </div>
+      </section>
+    </main>
+
+    <div id="image-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" hidden>
+      <div class="modal-backdrop" data-close-modal></div>
+      <div class="modal-content">
+        <button class="close-modal" type="button" aria-label="Tanca la imatge" data-close-modal>×</button>
+        <figure>
+          <img id="modal-image" src="" alt="">
+          <figcaption class="modal-info">
+            <p id="modal-category" class="modal-category"></p>
+            <h2 id="modal-title"></h2>
+            <p id="modal-description"></p>
+            <p id="modal-metadata" class="modal-metadata"></p>
+          </figcaption>
+        </figure>
+      </div>
+    </div>
+
+    <noscript>Aquesta visualització necessita JavaScript activat.</noscript>
+    <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+    <script src="js/main.js"></script>
+  </body>
+</html>

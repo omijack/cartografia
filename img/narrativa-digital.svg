@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" role="img" aria-labelledby="t d">
+  <title id="t">Narrativa digital</title><desc id="d">Nodes lluminosos connectats sobre una pantalla fosca.</desc>
+  <defs><radialGradient id="g"><stop stop-color="#236d69"/><stop offset="1" stop-color="#0a141a"/></radialGradient></defs>
+  <rect width="1200" height="900" fill="url(#g)"/>
+  <g stroke="#5bc0be" stroke-width="8" opacity=".8"><path d="M160 550 360 250l240 230 250-280 190 350M160 550l250 160 190-230 230 240 210-170M360 250l490-50M410 710l420 10"/></g>
+  <g fill="#f6f3ed" stroke="#5bc0be" stroke-width="13"><circle cx="160" cy="550" r="32"/><circle cx="360" cy="250" r="40"/><circle cx="410" cy="710" r="29"/><circle cx="600" cy="480" r="55"/><circle cx="850" cy="200" r="34"/><circle cx="830" cy="720" r="42"/><circle cx="1040" cy="550" r="31"/></g>
+  <text x="600" y="845" text-anchor="middle" fill="#f6f3ed" font-family="monospace" font-size="57">NARRATIVA DIGITAL</text>
+</svg>

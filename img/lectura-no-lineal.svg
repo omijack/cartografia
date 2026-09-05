@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" role="img" aria-labelledby="t d">
+  <title id="t">Lectura no lineal</title><desc id="d">Camins de lectura que es bifurquen entre punts.</desc>
+  <rect width="1200" height="900" fill="#251624"/>
+  <g fill="none" stroke-linecap="round" stroke-width="19"><path d="M115 450c180 0 180-220 360-220s180 440 360 440 160-220 250-220" stroke="#f08cae"/><path d="M115 450c180 0 180 220 360 220s180-440 360-440 160 220 250 220" stroke="#5bc0be"/><path d="M115 450h970" stroke="#e6c75c"/></g>
+  <g fill="#f6f3ed" stroke="#251624" stroke-width="12"><circle cx="115" cy="450" r="35"/><circle cx="475" cy="230" r="35"/><circle cx="475" cy="670" r="35"/><circle cx="835" cy="230" r="35"/><circle cx="835" cy="670" r="35"/><circle cx="1085" cy="450" r="35"/></g>
+  <text x="600" y="835" text-anchor="middle" fill="#f6f3ed" font-family="Georgia" font-size="62">LECTURA NO LINEAL</text>
+</svg>

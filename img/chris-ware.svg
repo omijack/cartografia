@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" role="img" aria-labelledby="t d">
+  <title id="t">Chris Ware</title><desc id="d">Retrat geomètric abstracte sobre una retícula editorial.</desc>
+  <rect width="1200" height="900" fill="#f0e4ca"/><g fill="none" stroke="#153843" stroke-width="5" opacity=".35"><path d="M0 150h1200M0 300h1200M0 450h1200M0 600h1200M0 750h1200M200 0v900M400 0v900M600 0v900M800 0v900M1000 0v900"/></g>
+  <circle cx="600" cy="330" r="180" fill="#ef8354"/><circle cx="600" cy="315" r="130" fill="#eadac0"/><path d="M462 300c30-145 250-145 276 0-70-45-205-45-276 0Z" fill="#514334"/>
+  <path d="M335 815c24-245 130-340 265-340s241 95 265 340" fill="#153843"/><path d="M520 465h160l-80 150Z" fill="#f6f3ed"/>
+  <text x="600" y="852" text-anchor="middle" fill="#153843" font-family="Georgia" font-size="66" font-weight="bold">CHRIS WARE</text>
+</svg>

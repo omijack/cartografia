@@ -1,0 +1,13 @@
+id,label,type,category,epoch,technique,image_url,description,relations
+1,"Little Nemo in Slumberland",obra,precursores,1905-1914,premsa_il·lustrada,img/little-nemo.svg,"La pàgina es converteix en un espai arquitectònic mutable on el format i la seqüència participen activament en el relat.",2;4;9
+2,"Winsor McCay",autor,precursores,1867-1934,dibuix_i_tinta,img/winsor-mccay.svg,"Autor pioner en l'experimentació amb la mida de la vinyeta, el ritme visual i les possibilitats espacials de la pàgina.",1;3
+3,"Experimentació formal",corrent,experimental,1960-2026,multimèdia,img/experimentacio-formal.svg,"Tradició oberta que desborda la quadrícula, incorpora nous suports i converteix la lectura en una experiència espacial.",2;4;5;7;10;12
+4,"Un coup de dés jamais n’abolira le hasard",obra,precursores,1897-1914,tipografia,img/coup-de-des.svg,"Poema tipogràfic que fa de la doble pàgina un camp visual i anticipa lectures no lineals pròximes al còmic expandit.",1;3;9
+5,"Agrippa (A Book of the Dead)",obra,digital,1992-1992,digital_efimer,img/agrippa.svg,"Obra concebuda com a lectura irrepetible: el text digital s'esborra després de ser executat i problematitza l'arxiu.",3;6;11
+6,"William Gibson",autor,digital,1948-2026,escriptura_digital,img/william-gibson.svg,"Escriptor vinculat a imaginaris tecnològics i a obres que exploren la materialitat canviant del text digital.",5;11
+7,"Building Stories",obra,contemporanis,2012-2012,objecte_llibre,img/building-stories.svg,"Catorze peces impreses en formats diferents formen una narració que cada lectora ordena i recorre físicament.",3;8;9
+8,"Chris Ware",autor,contemporanis,1967-2026,disseny_editorial,img/chris-ware.svg,"Autor que integra arquitectura de pàgina, disseny, objecte i memòria en sistemes narratius d'alta complexitat visual.",7;10
+9,"Lectura no lineal",tema,experimental,1897-2026,narrativa_espacial,img/lectura-no-lineal.svg,"La lectura abandona un itinerari únic i permet recorreguts, combinacions i ordres alternatius dins del dispositiu.",1;4;7;10;12
+10,"Here",obra,contemporanis,1989-2014,collage_temporal,img/here.svg,"Una mateixa cantonada acull fragments d'èpoques diferents; la pàgina superposa temps i espais en una sola mirada.",3;8;9;11
+11,"Narrativa digital",corrent,digital,1992-2026,interactivitat,img/narrativa-digital.svg,"Pràctiques que incorporen pantalla, codi, navegació i comportaments variables com a components del relat.",5;6;10;12
+12,"The Boat",obra,transmedia,2015-2015,webcomic_animat,img/the-boat.svg,"Adaptació web que combina il·lustració, desplaçament, so i animació per articular una experiència immersiva.",3;9;11

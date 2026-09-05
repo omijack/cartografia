@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" role="img" aria-labelledby="t d">
+  <title id="t">Building Stories</title><desc id="d">Capsa oberta amb publicacions de formats diferents.</desc>
+  <rect width="1200" height="900" fill="#e7d8b7"/><rect x="100" y="90" width="1000" height="720" rx="18" fill="#bd3a38" stroke="#6c2525" stroke-width="12"/>
+  <g stroke="#1d2630" stroke-width="8"><rect x="160" y="155" width="370" height="250" fill="#f1ca69" transform="rotate(-4 345 280)"/><rect x="610" y="140" width="320" height="545" fill="#93babb" transform="rotate(5 770 410)"/><rect x="250" y="455" width="410" height="230" fill="#f2ede0" transform="rotate(3 455 570)"/></g>
+  <g fill="none" stroke="#1d2630" stroke-width="8"><path d="M205 220h270M205 270h190M665 230h210M665 285h210M665 340h210M310 530h280M310 580h210"/></g>
+  <text x="600" y="775" text-anchor="middle" fill="#f6f3ed" font-family="Georgia" font-size="72" font-weight="bold">BUILDING STORIES</text>
+</svg>

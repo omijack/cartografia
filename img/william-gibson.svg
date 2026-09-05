@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" role="img" aria-labelledby="t d">
+  <title id="t">William Gibson</title><desc id="d">Retrat gràfic abstracte amb una trama digital.</desc>
+  <defs><pattern id="p" width="36" height="36" patternUnits="userSpaceOnUse"><path d="M36 0H0v36" fill="none" stroke="#5bc0be" stroke-opacity=".16"/></pattern></defs>
+  <rect width="1200" height="900" fill="#0c1520"/><rect width="1200" height="900" fill="url(#p)"/>
+  <path d="M350 800c30-270 120-370 250-370s220 100 250 370" fill="#284152"/><circle cx="600" cy="315" r="154" fill="#d5c6af"/>
+  <path d="M438 298c0-190 330-205 330 10-75-70-245-78-330-10Z" fill="#c4c6c8"/><path d="M480 319h92m56 0h92m-148 0h56" stroke="#111b24" stroke-width="18"/>
+  <text x="600" y="844" text-anchor="middle" fill="#5bc0be" font-family="monospace" font-size="59">WILLIAM GIBSON</text>
+</svg>

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" role="img" aria-labelledby="t d">
+  <title id="t">Un coup de dés</title><desc id="d">Composició tipogràfica inspirada en una doble pàgina poètica.</desc>
+  <rect width="1200" height="900" fill="#eee9df"/><path d="M600 40v820" stroke="#c9c0b3" stroke-width="2"/>
+  <g fill="#182028" font-family="Georgia"><text x="90" y="170" font-size="28">UN COUP</text><text x="260" y="280" font-size="82" font-weight="bold">DE DÉS</text><text x="725" y="175" font-size="22">JAMAIS</text><text x="650" y="440" font-size="55" font-style="italic">N’ABOLIRA</text><text x="810" y="700" font-size="91" font-weight="bold">LE HASARD</text></g>
+  <g fill="#ef8354"><circle cx="170" cy="590" r="14"/><circle cx="220" cy="635" r="14"/><circle cx="270" cy="680" r="14"/><circle cx="990" cy="320" r="14"/></g>
+</svg>

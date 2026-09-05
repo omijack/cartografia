@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" role="img" aria-labelledby="t d">
+  <title id="t">Winsor McCay</title><desc id="d">Retrat gràfic abstracte d'un autor.</desc>
+  <rect width="1200" height="900" fill="#122a31"/><circle cx="600" cy="380" r="250" fill="#5bc0be" opacity=".22"/>
+  <circle cx="600" cy="325" r="145" fill="#eddfc7"/><path d="M435 330c12-185 320-220 342 3-65-62-111-105-178-110-69 0-113 38-164 107Z" fill="#17202a"/>
+  <path d="M300 815c28-250 175-330 300-330s272 80 300 330" fill="#3b6972"/><path d="m530 500 70 115 70-115" fill="#f5f0e7"/>
+  <text x="600" y="835" text-anchor="middle" fill="#f5f0e7" font-family="Georgia" font-size="62">WINSOR McCAY</text>
+</svg>

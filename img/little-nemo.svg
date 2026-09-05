@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" role="img" aria-labelledby="t d">
+  <title id="t">Little Nemo in Slumberland</title><desc id="d">Composició abstracta inspirada en una pàgina de còmic arquitectònica.</desc>
+  <defs><linearGradient id="g" x2="1" y2="1"><stop stop-color="#17324a"/><stop offset="1" stop-color="#ef8354"/></linearGradient></defs>
+  <rect width="1200" height="900" fill="#f2e9d8"/><rect x="56" y="56" width="1088" height="788" rx="18" fill="url(#g)"/>
+  <g fill="#f2e9d8" stroke="#10151b" stroke-width="10"><rect x="105" y="105" width="430" height="280"/><rect x="560" y="105" width="535" height="280"/><rect x="105" y="410" width="990" height="385"/></g>
+  <g fill="none" stroke="#efc87a" stroke-width="15"><path d="M170 330 310 165l150 165M630 335c90-190 230-190 390 0M190 690c260-290 520 210 820-150"/></g>
+  <text x="600" y="760" text-anchor="middle" fill="#10151b" font-family="Georgia" font-size="58" font-weight="bold">LITTLE NEMO</text>
+</svg>
