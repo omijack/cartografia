@@ -1,639 +1,612 @@
-/* global d3 */
+/* global d3, readRepository, bindRepositoryControls, validateCorpus */
+"use strict";
 
-const TYPE_LABELS = {
-  obra: "Obra",
-  autor: "Autoria",
-  corrent: "Corrent",
-  tecnica: "Tècnica",
-  tema: "Tema"
-};
-
-const CATEGORY_LABELS = {
-  precursores: "Precursores",
-  contemporanis: "Contemporanis",
-  transmedia: "Transmèdia",
-  digital: "Digital",
-  experimental: "Experimental"
-};
-
-const TYPE_COLORS = {
-  obra: "#ef8354",
-  autor: "#5bc0be",
-  corrent: "#a88beb",
-  tecnica: "#e6c75c",
-  tema: "#f08cae"
-};
-
-const state = {
-  nodes: [],
-  links: [],
-  filteredNodes: [],
-  filteredLinks: [],
-  view: "graph",
-  selectedId: null,
-  simulation: null,
-  zoom: null,
-  resizeTimer: null,
-  lastFocused: null
-};
-
-const dom = {
-  svg: d3.select("#graph"),
-  visualization: document.querySelector("#visualization"),
-  loading: document.querySelector("#loading"),
-  noResults: document.querySelector("#no-results"),
-  tooltip: document.querySelector("#tooltip"),
-  resultCount: document.querySelector("#result-count"),
-  search: document.querySelector("#search"),
-  typeFilter: document.querySelector("#filter-type"),
-  categoryFilter: document.querySelector("#filter-category"),
-  epochFilter: document.querySelector("#filter-epoch"),
-  clearFilters: document.querySelector("#clear-filters"),
-  resetView: document.querySelector("#reset-view"),
-  viewDescription: document.querySelector("#view-description"),
-  emptyState: document.querySelector("#empty-state"),
-  profile: document.querySelector("#profile"),
-  panelImageButton: document.querySelector("#panel-image-button"),
-  panelImage: document.querySelector("#panel-image"),
-  panelCategory: document.querySelector("#panel-category"),
-  profileTitle: document.querySelector("#profile-title"),
-  panelDescription: document.querySelector("#panel-description"),
-  panelType: document.querySelector("#panel-type"),
-  panelEpoch: document.querySelector("#panel-epoch"),
-  panelTechnique: document.querySelector("#panel-technique"),
-  connectionsList: document.querySelector("#panel-connections-list"),
-  modal: document.querySelector("#image-modal"),
-  modalImage: document.querySelector("#modal-image"),
-  modalCategory: document.querySelector("#modal-category"),
-  modalTitle: document.querySelector("#modal-title"),
-  modalDescription: document.querySelector("#modal-description"),
-  modalMetadata: document.querySelector("#modal-metadata"),
-  modalClose: document.querySelector(".close-modal")
-};
-
-const normalize = (value) =>
-  String(value ?? "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLocaleLowerCase("ca");
-
-const titleCase = (value) =>
-  String(value || "—")
-    .replaceAll("_", " ")
-    .replace(/^./, (letter) => letter.toLocaleUpperCase("ca"));
-
+const TYPE_LABELS = { obra: "Obra", autor: "Autoria", exposicio: "Exposició", corrent: "Corrent", tecnica: "Tècnica", tema: "Tema" };
+const CATEGORY_LABELS = { precursores: "Precursores", contemporanis: "Contemporanis", transmedia: "Transmèdia", digital: "Digital", experimental: "Experimental" };
+const TYPE_COLORS = { obra: "#e7b888", autor: "#87b9b1", exposicio: "#d3b7db", corrent: "#a49bc7", tecnica: "#d6c479", tema: "#cba1aa" };
+const $ = (id) => document.getElementById(id);
+const normalize = (value) => String(value ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("ca");
+const titleCase = (value) => String(value || "—").replaceAll("_", " ").replace(/^./, (letter) => letter.toLocaleUpperCase("ca"));
 const nodeId = (value) => String(typeof value === "object" ? value.id : value);
 const nodeColor = (node) => TYPE_COLORS[node.type] || "#aeb8c2";
-const epochStart = (epoch) => Number.parseInt(String(epoch).match(/\d{4}/)?.[0], 10) || 0;
+const epochStart = (epoch) => Number.parseInt(String(epoch).match(/\d{4}/)?.[0], 10) || null;
+const truncate = (value, length) => value.length > length ? value.slice(0, length - 1) + "…" : value;
+const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const state = {
+  nodes: [], links: [], filteredNodes: [], filteredLinks: [], byId: new Map(), neighbors: new Map(),
+  view: "graph", selectedId: null, simulation: null, zoom: null, root: null,
+  nodeSize: 96, paused: reducedMotion, fitNext: true, ready: false, modalIds: [], modalId: null
+};
+let svg;
+let resizeTimer;
+let toastTimer;
+let originalObjectURL;
+
+function element(tag, className, text) {
+  const result = document.createElement(tag);
+  if (className) result.className = className;
+  if (text !== undefined) result.textContent = text;
+  return result;
+}
+
+function toast(message) {
+  $("toast").textContent = message;
+  $("toast").hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { $("toast").hidden = true; }, 6000);
+}
 
 async function loadData() {
   try {
-    const [nodes, links] = await Promise.all([
-      d3.csv("data/comics.csv", (row) => ({
-        ...row,
-        id: String(row.id),
-        relationIds: String(row.relations || "").split(";").filter(Boolean)
-      })),
-      d3.csv("data/relations.csv", (row) => ({
-        ...row,
-        source: String(row.source),
-        target: String(row.target),
-        weight: Number(row.weight) || 0.3
-      }))
-    ]);
-
-    state.nodes = nodes;
-    state.links = links.filter((link) =>
-      nodes.some((node) => node.id === link.source) && nodes.some((node) => node.id === link.target)
-    );
-
-    state.nodes.forEach((node) => {
-      node.degree = state.links.filter(
-        (link) => nodeId(link.source) === node.id || nodeId(link.target) === node.id
-      ).length;
-    });
-
-    populateFilters();
-    renderLegend();
+    if (typeof d3 === "undefined") throw new Error("No s’ha pogut carregar D3. Comprova la connexió a Internet i recarrega la pàgina.");
+    svg = d3.select("#graph");
+    let corpus;
+    try {
+      corpus = await readRepository();
+    } catch (error) {
+      console.warn("No es pot llegir l’arxiu local.", error);
+      toast("No s’ha pogut llegir l’arxiu local. Es mostra el corpus de mostra.");
+    }
+    if (corpus) {
+      corpus = validateCorpus(corpus);
+      $("storage-status").textContent = "Arxiu desat en aquest navegador";
+    } else {
+      const [nodes, links] = await Promise.all([d3.csv("data/comics.csv"), d3.csv("data/relations.csv")]);
+      corpus = validateCorpus({ version: 1, nodes, links: links.map((link) => ({ ...link, weight: Number(link.weight) })) });
+    }
+    replaceCorpus(corpus);
     bindControls();
+    bindRepositoryControls();
+    state.ready = true;
     applyFilters();
-    dom.loading.hidden = true;
+    $("loading").hidden = true;
+    ["add-image", "export-data", "import-data"].forEach((id) => { $(id).disabled = false; });
   } catch (error) {
     console.error(error);
-    dom.loading.innerHTML = `
-      <div class="error-message">
-        <strong>No s'han pogut carregar les dades.</strong><br>
-        Obre el projecte mitjançant un servidor local (consulta el README) i torna-ho a provar.
-      </div>`;
+    $("loading").replaceChildren(element("p", "form-error", error.message || "No s’han pogut carregar les dades."));
+    $("loading").append(element("p", "", "Executa el projecte amb un servidor local i torna-ho a provar (consulta el README)."));
   }
 }
 
-function populateFilters() {
-  addOptions(dom.typeFilter, [...new Set(state.nodes.map((node) => node.type))], TYPE_LABELS);
-  addOptions(dom.categoryFilter, [...new Set(state.nodes.map((node) => node.category))], CATEGORY_LABELS);
-  addOptions(
-    dom.epochFilter,
-    [...new Set(state.nodes.map((node) => node.epoch))].sort((a, b) => epochStart(a) - epochStart(b))
-  );
+function replaceCorpus(corpus) {
+  state.simulation?.stop();
+  state.nodes = corpus.nodes;
+  state.links = corpus.links.map((link) => ({ ...link, source: nodeId(link.source), target: nodeId(link.target) }));
+  state.byId = new Map(state.nodes.map((node) => [node.id, node]));
+  state.neighbors = new Map(state.nodes.map((node) => [node.id, new Set([node.id])]));
+  state.nodes.forEach((node) => { node.degree = 0; });
+  state.links.forEach((link) => {
+    state.neighbors.get(link.source).add(link.target);
+    state.neighbors.get(link.target).add(link.source);
+    state.byId.get(link.source).degree++;
+    state.byId.get(link.target).degree++;
+  });
+  populateFilters();
+  renderLegend();
 }
 
-function addOptions(select, values, labels = {}) {
-  values.sort((a, b) => String(labels[a] || a).localeCompare(String(labels[b] || b), "ca"));
-  values.forEach((value) => {
-    const option = document.createElement("option");
-    option.value = value;
-    option.textContent = labels[value] || titleCase(value);
-    select.append(option);
+function populateFilters() {
+  [["filter-type", "type", TYPE_LABELS], ["filter-category", "category", CATEGORY_LABELS], ["filter-epoch", "epoch", {}]].forEach(([id, field, labels]) => {
+    const select = $(id);
+    const previous = select.value;
+    while (select.options.length > 1) select.remove(1);
+    const values = [...new Set(state.nodes.map((node) => node[field]).filter(Boolean))];
+    values.sort(field === "epoch"
+      ? (a, b) => (epochStart(a) ?? Infinity) - (epochStart(b) ?? Infinity)
+      : (a, b) => (labels[a] || a).localeCompare(labels[b] || b, "ca"));
+    values.forEach((value) => select.add(new Option(labels[value] || titleCase(value), value)));
+    select.value = values.includes(previous) ? previous : "all";
   });
 }
 
 function renderLegend() {
-  const types = [...new Set(state.nodes.map((node) => node.type))];
-  d3.select("#legend")
-    .selectAll("span.legend-item")
-    .data(types)
-    .join("span")
-    .attr("class", "legend-item")
-    .html(
-      (type) =>
-        `<i class="legend-dot" style="--dot-color:${TYPE_COLORS[type] || "#aeb8c2"}"></i>${TYPE_LABELS[type] || titleCase(type)}`
-    );
+  $("legend").replaceChildren();
+  [...new Set(state.nodes.map((node) => node.type))].forEach((type) => {
+    const button = element("button", "legend-item");
+    button.type = "button";
+    button.dataset.type = type;
+    const dot = element("i", "legend-dot");
+    dot.style.setProperty("--dot-color", TYPE_COLORS[type] || "#aeb8c2");
+    button.append(dot, element("span", "", TYPE_LABELS[type] || titleCase(type)),
+      element("span", "legend-count", state.nodes.filter((node) => node.type === type).length));
+    button.addEventListener("click", () => {
+      $("filter-type").value = $("filter-type").value === type ? "all" : type;
+      applyFilters();
+    });
+    $("legend").append(button);
+  });
 }
 
 function bindControls() {
-  [dom.typeFilter, dom.categoryFilter, dom.epochFilter].forEach((control) => {
-    control.addEventListener("change", applyFilters);
+  ["filter-type", "filter-category", "filter-epoch"].forEach((id) => $(id).addEventListener("change", applyFilters));
+  $("search").addEventListener("input", applyFilters);
+  ["clear-filters", "empty-clear"].forEach((id) => $(id).addEventListener("click", resetFilters));
+  document.querySelectorAll(".view-button").forEach((button) => button.addEventListener("click", () => setView(button.dataset.view)));
+  $("reset-view").addEventListener("click", () => fitView(true));
+  $("zoom-in").addEventListener("click", () => zoomBy(1.3));
+  $("zoom-out").addEventListener("click", () => zoomBy(1 / 1.3));
+  $("pause-layout").addEventListener("click", () => {
+    state.paused = !state.paused;
+    updatePauseButton();
+    if (state.paused) state.simulation?.stop();
+    else state.simulation?.alpha(.3).restart();
   });
-  dom.search.addEventListener("input", applyFilters);
-
-  dom.clearFilters.addEventListener("click", () => {
-    dom.search.value = "";
-    dom.typeFilter.value = "all";
-    dom.categoryFilter.value = "all";
-    dom.epochFilter.value = "all";
+  updatePauseButton();
+  $("node-size").addEventListener("input", (event) => {
+    state.nodeSize = Number(event.target.value);
+    $("size-value").textContent = state.nodeSize < 88 ? "S" : state.nodeSize > 112 ? "L" : "M";
+    state.fitNext = true;
+    render();
+  });
+  $("show-labels").addEventListener("change", () => svg.classed("hide-labels", !$("show-labels").checked));
+  $("focus-related").addEventListener("change", applyFilters);
+  $("clear-selection").addEventListener("click", () => {
+    clearSelection();
     applyFilters();
+    $("visualization").focus();
   });
-
-  document.querySelectorAll(".view-button").forEach((button) => {
-    button.addEventListener("click", () => setView(button.dataset.view));
+  $("panel-image-button").addEventListener("click", () => openModal(state.byId.get(state.selectedId)));
+  document.querySelector("[data-close-modal]").addEventListener("click", () => $("image-modal").close());
+  $("image-modal").addEventListener("click", (event) => {
+    if (event.target !== $("image-modal")) return;
+    const rect = event.target.getBoundingClientRect();
+    if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) event.target.close();
   });
-
-  dom.resetView.addEventListener("click", resetView);
-  dom.panelImageButton.addEventListener("click", () => {
-    const selected = state.nodes.find((node) => node.id === state.selectedId);
-    if (selected) openModal(selected);
+  $("image-modal").addEventListener("close", () => {
+    if (originalObjectURL) URL.revokeObjectURL(originalObjectURL);
+    originalObjectURL = null;
   });
-
-  document.querySelectorAll("[data-close-modal]").forEach((control) => {
-    control.addEventListener("click", closeModal);
+  $("modal-inspect").addEventListener("click", () => {
+    $("image-modal").close();
+    $("edit-image").focus();
   });
-
-  document.addEventListener("keydown", handleGlobalKeydown);
-
+  $("previous-image").addEventListener("click", () => navigateModal(-1));
+  $("next-image").addEventListener("click", () => navigateModal(1));
+  document.addEventListener("keydown", (event) => {
+    if ($("image-modal").open && ["ArrowLeft", "ArrowRight"].includes(event.key)) {
+      event.preventDefault();
+      navigateModal(event.key === "ArrowLeft" ? -1 : 1);
+    } else if (event.key === "Escape" && !document.querySelector("dialog[open]")) {
+      clearSelection();
+      applyFilters();
+    }
+  });
   new ResizeObserver(() => {
-    window.clearTimeout(state.resizeTimer);
-    state.resizeTimer = window.setTimeout(render, 120);
-  }).observe(dom.visualization);
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+      if (!state.ready) return;
+      state.fitNext = true;
+      render();
+    }, 150);
+  }).observe($("visualization"));
+}
+
+function updatePauseButton() {
+  $("pause-layout").textContent = state.paused ? "▷" : "Ⅱ";
+  const label = state.paused ? "Reprèn el moviment" : "Pausa el moviment";
+  $("pause-layout").setAttribute("aria-label", label);
+  $("pause-layout").title = label;
+  $("pause-layout").setAttribute("aria-pressed", String(state.paused));
+}
+
+function resetFilters() {
+  $("search").value = "";
+  ["filter-type", "filter-category", "filter-epoch"].forEach((id) => { $(id).value = "all"; });
+  $("focus-related").checked = false;
+  applyFilters();
 }
 
 function applyFilters() {
-  const query = normalize(dom.search.value.trim());
-  const type = dom.typeFilter.value;
-  const category = dom.categoryFilter.value;
-  const epoch = dom.epochFilter.value;
-
-  state.filteredNodes = state.nodes.filter((node) => {
-    const haystack = normalize(
-      [node.label, node.description, node.type, node.category, node.technique, node.epoch].join(" ")
-    );
-    return (
-      (!query || haystack.includes(query)) &&
-      (type === "all" || node.type === type) &&
-      (category === "all" || node.category === category) &&
-      (epoch === "all" || node.epoch === epoch)
-    );
+  const query = normalize($("search").value.trim());
+  let nodes = state.nodes.filter((node) => {
+    const searchable = [node.label, node.description, node.type, TYPE_LABELS[node.type], node.category,
+      CATEGORY_LABELS[node.category], node.technique, node.epoch, node.author, node.exhibition, node.location];
+    return (!query || normalize(searchable.join(" ")).includes(query)) &&
+      [["filter-type", "type"], ["filter-category", "category"], ["filter-epoch", "epoch"]]
+        .every(([id, field]) => $(id).value === "all" || $(id).value === node[field]);
   });
-
-  const visibleIds = new Set(state.filteredNodes.map((node) => node.id));
-  state.filteredLinks = state.links
-    .filter((link) => visibleIds.has(nodeId(link.source)) && visibleIds.has(nodeId(link.target)))
-    .map((link) => ({ ...link, source: nodeId(link.source), target: nodeId(link.target) }));
-
-  const count = state.filteredNodes.length;
-  dom.resultCount.textContent = `${count} ${count === 1 ? "element visible" : "elements visibles"} · ${state.filteredLinks.length} ${state.filteredLinks.length === 1 ? "relació" : "relacions"}`;
-  dom.noResults.hidden = count !== 0;
-
-  if (state.selectedId && !visibleIds.has(state.selectedId)) clearSelection();
+  if (state.selectedId && !nodes.some((node) => node.id === state.selectedId)) clearSelection();
+  if ($("focus-related").checked && state.selectedId) {
+    const related = state.neighbors.get(state.selectedId);
+    nodes = nodes.filter((node) => related.has(node.id));
+  }
+  state.filteredNodes = nodes;
+  const ids = new Set(nodes.map((node) => node.id));
+  state.filteredLinks = state.links.filter((link) => ids.has(link.source) && ids.has(link.target));
+  $("result-count").textContent = nodes.length + " de " + state.nodes.length + " imatges · " +
+    state.filteredLinks.length + (state.filteredLinks.length === 1 ? " connexió" : " connexions");
+  $("no-results").hidden = nodes.length !== 0;
+  document.querySelectorAll(".legend-item").forEach((button) => {
+    const active = button.dataset.type === $("filter-type").value;
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-pressed", String(active));
+  });
+  state.fitNext = true;
   render();
 }
 
 function setView(view) {
   if (view === state.view) return;
   state.view = view;
+  const views = {
+    graph: ["El mapa de l’arxiu", "Tot està connectat.", "VISTA DE XARXA", "Xarxa del còmic expandit"],
+    gallery: ["La col·lecció visual", "Històries per descobrir.", "VISTA DE GALERIA", "Galeria del còmic expandit"],
+    timeline: ["L’arxiu en el temps", "Un recorregut visual.", "VISTA CRONOLÒGICA", "Cronologia del còmic expandit"]
+  };
+  const copy = views[view];
+  ["view-kicker", "view-title", "view-badge", "graph-title"].forEach((id, index) => { $(id).textContent = copy[index]; });
   document.querySelectorAll(".view-button").forEach((button) => {
     const active = button.dataset.view === view;
     button.classList.toggle("is-active", active);
     button.setAttribute("aria-pressed", String(active));
   });
-  dom.viewDescription.textContent =
-    view === "graph"
-      ? "Relacions entre obres, autories, corrents i tècniques"
-      : "El corpus ordenat per data; les línies conserven les relacions";
-  dom.svg.select("#graph-title").text(view === "graph" ? "Xarxa del còmic expandit" : "Cronologia del còmic expandit");
+  $("graph").toggleAttribute("hidden", view === "gallery");
+  $("gallery").hidden = view !== "gallery";
+  $("canvas-bottom").hidden = view === "gallery";
+  $("node-size").disabled = view === "gallery";
+  $("show-labels").disabled = view === "gallery";
+  $("pause-layout").hidden = view !== "graph";
+  $("view-description").textContent = view === "timeline"
+    ? "Ordenat per l’any inicial · Arrossega i amplia per explorar"
+    : "Arrossega per explorar · Clic per ampliar · Espai per veure la fitxa";
+  state.fitNext = true;
   render();
 }
 
 function render() {
-  if (!state.nodes.length) return;
-  if (state.simulation) state.simulation.stop();
-
-  const { width, height } = dom.visualization.getBoundingClientRect();
+  if (!svg) return;
+  hideTooltip();
+  state.simulation?.stop();
+  if (state.view === "gallery") {
+    renderGallery();
+    return;
+  }
+  const { width, height } = $("visualization").getBoundingClientRect();
   if (!width || !height) return;
-
-  dom.svg.attr("viewBox", `0 0 ${width} ${height}`);
-  dom.svg.selectAll(".rendered-layer").remove();
-
-  const root = dom.svg.append("g").attr("class", "rendered-layer graph-layer");
-  state.zoom = d3
-    .zoom()
-    .scaleExtent([0.35, 4])
-    .filter((event) => !event.target.closest?.(".node") && !event.button)
-    .on("zoom", (event) => root.attr("transform", event.transform));
-  dom.svg.call(state.zoom).on("dblclick.zoom", null);
-
-  if (!state.filteredNodes.length) return;
-  if (state.view === "graph") renderGraph(root, width, height);
-  else renderTimeline(root, width, height);
-}
-
-function renderGraph(root, width, height) {
-  const links = state.filteredLinks.map((link) => ({ ...link }));
-  const radius = d3
-    .scaleSqrt()
-    .domain([0, d3.max(state.nodes, (node) => node.degree) || 1])
-    .range([8, 19]);
-
-  const link = root
-    .append("g")
-    .attr("aria-hidden", "true")
-    .selectAll("line")
-    .data(links)
-    .join("line")
-    .attr("class", "link")
-    .attr("stroke-width", (item) => 0.6 + item.weight * 2.4);
-
-  const node = createNodes(root, (item) => radius(item.degree));
-
-  state.simulation = d3
-    .forceSimulation(state.filteredNodes)
-    .force("link", d3.forceLink(links).id((item) => item.id).distance((item) => 175 + (1 - item.weight) * 120).strength(0.38))
-    .force("charge", d3.forceManyBody().strength(-680))
-    .force("center", d3.forceCenter(width / 2, height / 2 + 12))
-    .force("x", d3.forceX(width / 2).strength(0.018))
-    .force("y", d3.forceY(height / 2).strength(0.024))
-    .force("collision", d3.forceCollide().radius((item) => radius(item.degree) + 38).iterations(2))
-    .alpha(0.85)
-    .alphaDecay(0.035)
-    .on("tick", () => {
-      link
-        .attr("x1", (item) => item.source.x)
-        .attr("y1", (item) => item.source.y)
-        .attr("x2", (item) => item.target.x)
-        .attr("y2", (item) => item.target.y);
-      node.attr("transform", (item) => `translate(${item.x},${item.y})`);
-    });
-
-  node.call(
-    d3
-      .drag()
-      .on("start", (event, item) => {
-        hideTooltip();
-        if (!event.active) state.simulation.alphaTarget(0.2).restart();
-        item.fx = item.x;
-        item.fy = item.y;
-      })
-      .on("drag", (event, item) => {
-        item.fx = event.x;
-        item.fy = event.y;
-      })
-      .on("end", (event, item) => {
-        if (!event.active) state.simulation.alphaTarget(0);
-        item.fx = null;
-        item.fy = null;
-      })
-  );
-
-  updateHighlight(node, link);
-}
-
-function renderTimeline(root, width, height) {
-  const margin = { top: 86, right: 66, bottom: 54, left: 66 };
-  const years = state.filteredNodes.map((node) => epochStart(node.epoch));
-  let domain = d3.extent(years);
-  if (domain[0] === domain[1]) domain = [domain[0] - 5, domain[1] + 5];
-
-  const x = d3.scaleLinear().domain(domain).nice().range([margin.left, width - margin.right]);
-  const types = [...new Set(state.filteredNodes.map((node) => node.type))];
-  const y = d3.scalePoint().domain(types).range([margin.top + 30, height - margin.bottom - 18]).padding(0.4);
-
-  root
-    .append("g")
-    .attr("class", "timeline-grid")
-    .attr("transform", `translate(0,${height - margin.bottom})`)
-    .call(d3.axisBottom(x).ticks(Math.max(3, Math.floor(width / 140))).tickSize(-(height - margin.top - margin.bottom)).tickFormat(""));
-
-  root
-    .append("g")
-    .attr("class", "timeline-axis")
-    .attr("transform", `translate(0,${height - margin.bottom})`)
-    .call(d3.axisBottom(x).ticks(Math.max(3, Math.floor(width / 140))).tickFormat(d3.format("d")));
-
-  root
-    .append("g")
-    .attr("class", "timeline-axis")
-    .attr("transform", `translate(${margin.left - 15},0)`)
-    .call(d3.axisLeft(y).tickSize(0).tickPadding(10).tickFormat((type) => TYPE_LABELS[type] || titleCase(type)))
-    .call((axis) => axis.select(".domain").remove());
-
-  const positions = new Map();
-  const overlaps = new Map();
-  [...state.filteredNodes]
-    .sort((a, b) => epochStart(a.epoch) - epochStart(b.epoch))
-    .forEach((item) => {
-      const key = `${item.type}-${epochStart(item.epoch)}`;
-      const index = overlaps.get(key) || 0;
-      overlaps.set(key, index + 1);
-      positions.set(item.id, {
-        x: x(epochStart(item.epoch)) + (index % 3) * 12 - Math.min(index, 2) * 6,
-        y: y(item.type) + Math.floor(index / 3) * 16
-      });
-    });
-
-  const link = root
-    .append("g")
-    .attr("aria-hidden", "true")
-    .selectAll("path")
-    .data(state.filteredLinks)
-    .join("path")
-    .attr("class", "link")
-    .attr("fill", "none")
-    .attr("stroke-width", (item) => 0.6 + item.weight * 2)
-    .attr("d", (item) => {
-      const source = positions.get(nodeId(item.source));
-      const target = positions.get(nodeId(item.target));
-      const bend = Math.max(20, Math.abs(target.x - source.x) * 0.22);
-      return `M${source.x},${source.y} C${source.x},${source.y - bend} ${target.x},${target.y - bend} ${target.x},${target.y}`;
-    });
-
-  const node = createNodes(root, () => 10)
-    .attr("transform", (item) => {
-      const position = positions.get(item.id);
-      return `translate(${position.x},${position.y})`;
-    });
-
-  updateHighlight(node, link);
-}
-
-function createNodes(root, radiusAccessor) {
-  const node = root
-    .append("g")
-    .selectAll("g.node")
-    .data(state.filteredNodes, (item) => item.id)
-    .join("g")
-    .attr("class", (item) => `node${item.id === state.selectedId ? " is-selected" : ""}`)
-    .attr("tabindex", 0)
-    .attr("role", "button")
-    .attr("aria-label", (item) => `${item.label}. ${TYPE_LABELS[item.type] || item.type}, ${item.epoch}. Obre la imatge.`)
-    .on("mouseenter", (event, item) => {
-      showTooltip(event, item);
-      highlightRelated(item.id);
-    })
-    .on("mousemove", moveTooltip)
-    .on("mouseleave", () => {
+  const previousTransform = d3.zoomTransform(svg.node());
+  svg.interrupt().attr("viewBox", "0 0 " + width + " " + height);
+  svg.selectAll(".rendered-layer").remove();
+  state.root = svg.append("g").attr("class", "rendered-layer");
+  state.zoom = d3.zoom().scaleExtent([.08, 5])
+    .filter((event) => (!event.ctrlKey || event.type === "wheel") && !event.button && (event.type === "wheel" || !event.target.closest?.(".node")))
+    .on("zoom", (event) => {
+      state.root.attr("transform", event.transform);
+      $("zoom-value").textContent = Math.round(event.transform.k * 100) + "%";
       hideTooltip();
-      highlightRelated(state.selectedId);
-    })
-    .on("focus", (event, item) => highlightRelated(item.id))
+    });
+  svg.call(state.zoom).on("dblclick.zoom", null);
+  svg.call(state.zoom.transform, previousTransform);
+  if (!state.filteredNodes.length) return;
+  if (state.view === "graph") renderGraph(width, height);
+  else renderTimeline(width, height);
+  highlightRelated(state.selectedId);
+  if (state.fitNext) {
+    fitView(false);
+    state.fitNext = false;
+  }
+}
+
+function cardWidth(node) {
+  return state.nodeSize + Math.min(node.degree, 8) * 3;
+}
+
+function createNodes() {
+  const nodes = state.root.append("g").selectAll(".node").data(state.filteredNodes, (node) => node.id).join("g")
+    .attr("class", "node").attr("data-id", (node) => node.id).attr("tabindex", 0).attr("role", "button")
+    .attr("aria-label", (node) => node.label + ". " + (TYPE_LABELS[node.type] || node.type) + ". Retorn: amplia. Espai: fitxa.")
+    .on("mouseenter", (event, node) => { showTooltip(event, node); highlightRelated(node.id); })
+    .on("mousemove", moveTooltip)
+    .on("mouseleave", () => { hideTooltip(); highlightRelated(state.selectedId); })
+    .on("focus", (_, node) => highlightRelated(node.id))
     .on("blur", () => highlightRelated(state.selectedId))
-    .on("click", (event, item) => {
-      if (event.defaultPrevented) return;
-      selectNode(item, true);
-    })
-    .on("keydown", (event, item) => {
+    .on("click", (event, node) => { if (!event.defaultPrevented) openModal(node); })
+    .on("keydown", (event, node) => {
       if (event.key === "Enter" || event.key === " ") {
         event.preventDefault();
-        selectNode(item, true);
+        if (event.key === "Enter") openModal(node);
+        else { selectNode(node); $("edit-image").focus(); }
       }
     });
-
-  node
-    .append("circle")
-    .attr("class", "halo")
-    .attr("r", (item) => radiusAccessor(item) + 8)
-    .attr("stroke", nodeColor);
-
-  node
-    .append("circle")
-    .attr("class", "node-core")
-    .attr("r", radiusAccessor)
-    .attr("fill", nodeColor);
-
-  node
-    .append("circle")
-    .attr("class", "node-ring")
-    .attr("r", (item) => radiusAccessor(item) + 4);
-
-  node
-    .append("text")
-    .attr("text-anchor", "middle")
-    .attr("y", (item) => radiusAccessor(item) + 17)
-    .text((item) => truncate(item.label, 26));
-
-  return node;
+  nodes.append("rect").attr("class", "node-card");
+  nodes.append("text").attr("class", "image-fallback").attr("y", 3).attr("hidden", true).text("Imatge no disponible");
+  nodes.append("image").attr("href", (node) => node.image_url).attr("preserveAspectRatio", "xMidYMid meet")
+    .attr("x", (node) => -cardWidth(node) / 2 + 4).attr("y", (node) => -cardWidth(node) * .375 + 4)
+    .attr("width", (node) => cardWidth(node) - 8).attr("height", (node) => cardWidth(node) * .75 - 8)
+    .on("error", function () { d3.select(this.parentNode).select(".image-fallback").attr("hidden", null); d3.select(this).attr("visibility", "hidden"); });
+  nodes.append("rect").attr("class", "node-border").attr("stroke", nodeColor);
+  nodes.selectAll(".node-card, .node-border")
+    .attr("x", (node) => -cardWidth(node) / 2).attr("y", (node) => -cardWidth(node) * .375)
+    .attr("width", cardWidth).attr("height", (node) => cardWidth(node) * .75).attr("rx", 5);
+  nodes.append("rect").attr("class", "node-ring")
+    .attr("x", (node) => -cardWidth(node) / 2 - 5).attr("y", (node) => -cardWidth(node) * .375 - 5)
+    .attr("width", (node) => cardWidth(node) + 10).attr("height", (node) => cardWidth(node) * .75 + 10).attr("rx", 9);
+  nodes.append("text").attr("class", "node-label").attr("y", (node) => cardWidth(node) * .375 + 18)
+    .text((node) => truncate(node.label, Math.max(17, Math.floor(cardWidth(node) / 5))));
+  nodes.append("text").attr("class", "node-subtitle").attr("y", (node) => cardWidth(node) * .375 + 32)
+    .text((node) => (TYPE_LABELS[node.type] || titleCase(node.type)) + " · " + (node.epoch || "Sense data"));
+  return nodes;
 }
 
-function selectNode(node, showImage = false) {
+function renderGraph(width, height) {
+  const links = state.filteredLinks.map((link) => ({ ...link }));
+  const link = state.root.append("g").attr("aria-hidden", true).selectAll("line").data(links).join("line")
+    .attr("class", "link").attr("stroke-width", (item) => .6 + item.weight * 1.8);
+  const nodes = createNodes();
+  const update = () => {
+    link.attr("x1", (item) => item.source.x).attr("y1", (item) => item.source.y)
+      .attr("x2", (item) => item.target.x).attr("y2", (item) => item.target.y);
+    nodes.attr("transform", (node) => "translate(" + node.x + "," + node.y + ")");
+  };
+  const freshLayout = state.filteredNodes.some((node) => !Number.isFinite(node.x));
+  state.simulation = d3.forceSimulation(state.filteredNodes)
+    .force("link", d3.forceLink(links).id((node) => node.id).distance(state.nodeSize * 1.9).strength(.28))
+    .force("charge", d3.forceManyBody().strength(-460))
+    .force("center", d3.forceCenter(width / 2, height / 2 + 35))
+    .force("x", d3.forceX(width / 2).strength(.035))
+    .force("y", d3.forceY(height / 2 + 35).strength(.045))
+    .force("collision", d3.forceCollide().radius((node) => cardWidth(node) * .72 + 20).iterations(3))
+    .alphaDecay(.045).on("tick", update).stop();
+  // Pre-settle before fitting so every image starts inside the available canvas.
+  state.simulation.tick(freshLayout ? 140 : 55);
+  update();
+  if (!state.paused) state.simulation.alpha(.06).restart();
+  nodes.call(d3.drag().clickDistance(5)
+    .on("start", (event, node) => {
+      hideTooltip();
+      if (!event.active && !state.paused) state.simulation.alphaTarget(.12).restart();
+      node.fx = node.x; node.fy = node.y;
+    })
+    .on("drag", (event, node) => {
+      node.fx = node.x = event.x; node.fy = node.y = event.y;
+      update();
+    })
+    .on("end", (event, node) => {
+      if (!event.active) state.simulation.alphaTarget(0);
+      node.fx = null; node.fy = null;
+    }));
+}
+
+function renderTimeline(width, height) {
+  const size = state.nodeSize + 24;
+  const years = state.filteredNodes.map((node) => epochStart(node.epoch)).filter((year) => year !== null);
+  let [start, end] = d3.extent(years);
+  if (start === undefined) { start = 1900; end = 2000; }
+  if (start === end) { start -= 5; end += 5; }
+  const hasUndated = years.length !== state.filteredNodes.length;
+  const chartWidth = Math.max(width - 80, 900);
+  const x = d3.scaleLinear().domain([start, end]).nice().range([130, chartWidth - (hasUndated ? size + 40 : 10)]);
+  const positions = new Map();
+  const rows = [];
+  let rowY = 190;
+  // Greedy lanes keep neighboring years and identical dates from covering each other.
+  [...new Set(state.filteredNodes.map((node) => node.type))].forEach((type) => {
+    const lanes = [];
+    const items = state.filteredNodes.filter((node) => node.type === type)
+      .sort((a, b) => (epochStart(a.epoch) ?? Infinity) - (epochStart(b.epoch) ?? Infinity));
+    items.forEach((node) => {
+      const nodeX = epochStart(node.epoch) === null ? chartWidth : x(epochStart(node.epoch));
+      let lane = lanes.findIndex((right) => nodeX - size / 2 > right + 20);
+      if (lane === -1) lane = lanes.length;
+      lanes[lane] = nodeX + size / 2;
+      positions.set(node.id, { x: nodeX, y: rowY + lane * (size * .75 + 50) });
+    });
+    rows.push({ type, y: rowY });
+    rowY += lanes.length * (size * .75 + 50) + 35;
+  });
+  const axisY = Math.max(height - 65, rowY - 20);
+  state.root.append("g").attr("class", "timeline-grid").attr("transform", "translate(0," + axisY + ")")
+    .call(d3.axisBottom(x).ticks(8).tickSize(-(axisY - 135)).tickFormat(""));
+  state.root.append("g").attr("class", "timeline-axis").attr("transform", "translate(0," + axisY + ")")
+    .call(d3.axisBottom(x).ticks(8).tickFormat(d3.format("d")));
+  const labels = state.root.append("g").attr("class", "timeline-axis");
+  labels.selectAll("text").data(rows).join("text").attr("x", 0).attr("y", (row) => row.y)
+    .text((row) => TYPE_LABELS[row.type] || titleCase(row.type));
+  if (hasUndated) labels.append("text").attr("x", chartWidth).attr("y", axisY + 20).attr("text-anchor", "middle").text("Sense data");
+  state.root.append("g").attr("aria-hidden", true).selectAll("path").data(state.filteredLinks).join("path")
+    .attr("class", "link").attr("fill", "none").attr("stroke-width", (link) => .6 + link.weight * 1.8)
+    .attr("d", (link) => {
+      const a = positions.get(link.source), b = positions.get(link.target);
+      return "M" + a.x + "," + a.y + " C" + a.x + "," + (a.y - 60) + " " + b.x + "," + (b.y - 60) + " " + b.x + "," + b.y;
+    });
+  createNodes().attr("transform", (node) => {
+    const point = positions.get(node.id);
+    return "translate(" + point.x + "," + point.y + ")";
+  });
+}
+
+function renderGallery() {
+  $("gallery").replaceChildren();
+  state.filteredNodes.forEach((node) => {
+    const card = element("article", "gallery-card");
+    card.dataset.id = node.id;
+    card.classList.toggle("is-selected", node.id === state.selectedId);
+    const button = element("button", "gallery-image");
+    button.type = "button";
+    button.setAttribute("aria-label", "Amplia " + node.label);
+    const img = element("img");
+    img.src = node.image_url; img.alt = node.label; img.loading = "lazy";
+    button.append(img, element("span", "", "↗"));
+    button.addEventListener("click", () => openModal(node));
+    const copy = element("div", "gallery-copy");
+    const type = element("p", "", (TYPE_LABELS[node.type] || titleCase(node.type)) + " · " + (node.epoch || "Sense data"));
+    type.style.color = nodeColor(node);
+    const inspect = element("button", "text-button", "Consulta la fitxa →");
+    inspect.type = "button";
+    inspect.addEventListener("click", () => { selectNode(node); $("edit-image").focus(); });
+    copy.append(type, element("h3", "", node.label), inspect);
+    card.append(button, copy);
+    $("gallery").append(card);
+  });
+}
+
+function selectNode(node) {
+  if (!node) return;
   state.selectedId = node.id;
   updateInfoPanel(node);
+  $("focus-related").disabled = false;
+  if ($("focus-related").checked) applyFilters();
   highlightRelated(node.id);
-  dom.svg.selectAll(".node").classed("is-selected", (item) => item.id === node.id);
-  if (showImage) openModal(node);
+  document.querySelectorAll(".gallery-card").forEach((card) => card.classList.toggle("is-selected", card.dataset.id === node.id));
 }
 
 function clearSelection() {
   state.selectedId = null;
-  dom.emptyState.hidden = false;
-  dom.profile.hidden = true;
+  $("empty-state").hidden = false;
+  $("profile").hidden = true;
+  $("clear-selection").hidden = true;
+  $("info-panel").classList.remove("has-selection");
+  $("focus-related").checked = false;
+  $("focus-related").disabled = true;
   highlightRelated(null);
 }
 
 function updateInfoPanel(node) {
-  dom.emptyState.hidden = true;
-  dom.profile.hidden = false;
-  dom.panelImage.src = node.image_url;
-  dom.panelImage.alt = `Imatge de ${node.label}`;
-  dom.panelCategory.textContent = CATEGORY_LABELS[node.category] || titleCase(node.category);
-  dom.panelCategory.style.setProperty("--profile-color", nodeColor(node));
-  dom.profileTitle.textContent = node.label;
-  dom.panelDescription.textContent = node.description;
-  dom.panelType.textContent = TYPE_LABELS[node.type] || titleCase(node.type);
-  dom.panelEpoch.textContent = node.epoch;
-  dom.panelTechnique.textContent = titleCase(node.technique);
-
-  const connections = state.links
-    .filter((link) => nodeId(link.source) === node.id || nodeId(link.target) === node.id)
-    .map((link) => ({
-      link,
-      node: state.nodes.find((candidate) =>
-        candidate.id === (nodeId(link.source) === node.id ? nodeId(link.target) : nodeId(link.source))
-      )
-    }))
-    .filter((item) => item.node);
-
-  dom.connectionsList.replaceChildren();
-  if (!connections.length) {
-    const item = document.createElement("li");
-    item.textContent = "Sense connexions documentades";
-    dom.connectionsList.append(item);
-    return;
-  }
-
-  connections.forEach(({ link, node: related }) => {
-    const item = document.createElement("li");
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "connection-button";
-    button.innerHTML = `<span>${related.label}</span><span class="connection-type">${titleCase(link.type)}</span>`;
-    button.addEventListener("click", () => {
-      if (!state.filteredNodes.some((candidate) => candidate.id === related.id)) {
-        dom.search.value = "";
-        dom.typeFilter.value = "all";
-        dom.categoryFilter.value = "all";
-        dom.epochFilter.value = "all";
-        applyFilters();
-      }
-      state.selectedId = related.id;
-      updateInfoPanel(related);
-      render();
-    });
-    item.append(button);
-    dom.connectionsList.append(item);
+  $("empty-state").hidden = true;
+  $("profile").hidden = false;
+  $("clear-selection").hidden = false;
+  $("info-panel").classList.add("has-selection");
+  $("panel-image").src = node.image_url;
+  $("panel-image").alt = "Imatge de " + node.label;
+  $("panel-category").textContent = CATEGORY_LABELS[node.category] || titleCase(node.category);
+  $("panel-category").style.setProperty("--profile-color", nodeColor(node));
+  $("profile-title").textContent = node.label;
+  $("panel-description").textContent = node.description || "Aquesta imatge encara no té documentació. Edita la fitxa per afegir-hi context.";
+  $("panel-metadata").replaceChildren();
+  [["Tipus", TYPE_LABELS[node.type] || titleCase(node.type)], ["Autoria", node.author], ["Època", node.epoch || "Sense data"],
+    ["Tècnica", titleCase(node.technique)], ["Exposició", node.exhibition], ["Lloc", node.location]].forEach(([label, value]) => {
+    if (!value) return;
+    const row = element("div");
+    row.append(element("dt", "", label), element("dd", "", value));
+    $("panel-metadata").append(row);
   });
+  const links = state.links.filter((link) => isConnected(link, node.id));
+  $("connection-count").textContent = links.length;
+  $("panel-connections-list").replaceChildren();
+  if (!links.length) $("panel-connections-list").append(element("li", "field-hint", "Cap connexió encara. Afegeix-ne una des de l’editor."));
+  links.forEach((link) => {
+    const related = state.byId.get(link.source === node.id ? link.target : link.source);
+    const li = element("li");
+    const button = element("button", "connection-button");
+    button.type = "button";
+    const img = element("img");
+    img.src = related.image_url; img.alt = ""; img.loading = "lazy";
+    const copy = element("span", "", related.label);
+    copy.append(element("small", "connection-type", titleCase(link.type)));
+    button.append(img, copy, element("span", "", "↗"));
+    button.lastChild.style.flex = "0";
+    button.addEventListener("click", () => {
+      if (!state.filteredNodes.some((item) => item.id === related.id)) resetFilters();
+      selectNode(related);
+      focusNode(related.id);
+    });
+    li.append(button);
+    $("panel-connections-list").append(li);
+  });
+  $("info-panel").scrollTop = 0;
 }
 
-function updateHighlight(nodeSelection, linkSelection) {
-  if (!state.selectedId) return;
-  const relatedIds = getRelatedIds(state.selectedId);
-  nodeSelection
-    .classed("is-selected", (item) => item.id === state.selectedId)
-    .classed("is-muted", (item) => !relatedIds.has(item.id));
-  linkSelection
-    .classed("is-related", (item) => isConnected(item, state.selectedId))
-    .classed("is-muted", (item) => !isConnected(item, state.selectedId));
-}
+function isConnected(link, id) { return nodeId(link.source) === id || nodeId(link.target) === id; }
 
 function highlightRelated(id) {
-  const nodes = dom.svg.selectAll(".node");
-  const links = dom.svg.selectAll(".link");
-  if (!id) {
-    nodes.classed("is-muted", false);
-    links.classed("is-muted", false).classed("is-related", false);
-    return;
-  }
-
-  const relatedIds = getRelatedIds(id);
-  nodes.classed("is-muted", (item) => !relatedIds.has(item.id));
-  links
-    .classed("is-related", (item) => isConnected(item, id))
-    .classed("is-muted", (item) => !isConnected(item, id));
+  if (!svg) return;
+  const related = state.neighbors.get(id);
+  svg.selectAll(".node").classed("is-selected", (node) => node.id === state.selectedId)
+    .attr("aria-pressed", (node) => String(node.id === state.selectedId))
+    .classed("is-muted", (node) => Boolean(related && !related.has(node.id)));
+  svg.selectAll(".link").classed("is-related", (link) => Boolean(id && isConnected(link, id)))
+    .classed("is-muted", (link) => Boolean(id && !isConnected(link, id)));
 }
 
-function getRelatedIds(id) {
-  const ids = new Set([id]);
-  state.links.forEach((link) => {
-    if (nodeId(link.source) === id) ids.add(nodeId(link.target));
-    if (nodeId(link.target) === id) ids.add(nodeId(link.source));
-  });
-  return ids;
-}
-
-function isConnected(link, id) {
-  return nodeId(link.source) === id || nodeId(link.target) === id;
+function focusNode(id) {
+  if (state.view === "gallery") return;
+  const target = svg.selectAll(".node").filter((node) => node.id === id).node();
+  if (!target || !state.zoom) return;
+  const point = target.transform.baseVal.consolidate().matrix;
+  const { width, height } = $("visualization").getBoundingClientRect();
+  const scale = Math.max(.7, d3.zoomTransform(svg.node()).k);
+  svg.transition().duration(reducedMotion ? 0 : 300).call(state.zoom.transform,
+    d3.zoomIdentity.translate(width / 2 - point.e * scale, (height + 80) / 2 - point.f * scale).scale(scale));
 }
 
 function showTooltip(event, node) {
-  dom.tooltip.innerHTML = `
-    <div class="tooltip-content">
-      <img src="${node.image_url}" alt="">
-      <div><strong>${node.label}</strong><span>${TYPE_LABELS[node.type] || titleCase(node.type)} · ${node.epoch}</span></div>
-    </div>`;
-  dom.tooltip.hidden = false;
+  $("tooltip").replaceChildren(element("strong", "", node.label),
+    element("span", "", (TYPE_LABELS[node.type] || titleCase(node.type)) + " · " + (node.epoch || "Sense data")),
+    element("span", "", node.degree + " connexions · Clic per ampliar"));
+  $("tooltip").hidden = false;
   moveTooltip(event);
 }
-
 function moveTooltip(event) {
-  const gap = 15;
-  const width = 220;
-  const x = Math.min(event.clientX + gap, window.innerWidth - width - gap);
-  const y = Math.min(event.clientY + gap, window.innerHeight - 90);
-  dom.tooltip.style.left = `${Math.max(gap, x)}px`;
-  dom.tooltip.style.top = `${Math.max(gap, y)}px`;
+  const rect = $("tooltip").getBoundingClientRect();
+  $("tooltip").style.left = Math.max(12, Math.min(event.clientX + 16, innerWidth - rect.width - 12)) + "px";
+  $("tooltip").style.top = Math.max(12, Math.min(event.clientY + 16, innerHeight - rect.height - 12)) + "px";
 }
-
-function hideTooltip() {
-  dom.tooltip.hidden = true;
-}
+function hideTooltip() { $("tooltip").hidden = true; }
 
 function openModal(node) {
-  state.lastFocused = document.activeElement;
-  dom.modalImage.src = node.image_url;
-  dom.modalImage.alt = `Imatge ampliada de ${node.label}`;
-  dom.modalCategory.textContent = CATEGORY_LABELS[node.category] || titleCase(node.category);
-  dom.modalCategory.style.setProperty("--profile-color", nodeColor(node));
-  dom.modalTitle.textContent = node.label;
-  dom.modalDescription.textContent = node.description;
-  dom.modalMetadata.textContent = `${TYPE_LABELS[node.type] || titleCase(node.type)} · ${node.epoch} · ${titleCase(node.technique)}`;
-  dom.modal.hidden = false;
-  document.body.classList.add("has-modal");
-  window.requestAnimationFrame(() => dom.modalClose.focus());
+  if (!node) return;
+  hideTooltip();
+  state.modalIds = state.filteredNodes.map((item) => item.id);
+  selectNode(node);
+  updateModal(node);
+  if (!$("image-modal").open) $("image-modal").showModal();
 }
 
-function closeModal() {
-  if (dom.modal.hidden) return;
-  dom.modal.hidden = true;
-  document.body.classList.remove("has-modal");
-  dom.modalImage.src = "";
-  state.lastFocused?.focus?.();
-}
-
-function handleGlobalKeydown(event) {
-  if (event.key === "Escape" && !dom.modal.hidden) {
-    closeModal();
-    return;
-  }
-
-  if (event.key === "Tab" && !dom.modal.hidden) {
-    const focusable = [...dom.modal.querySelectorAll("button, [href], [tabindex]:not([tabindex='-1'])")];
-    if (!focusable.length) return;
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
-    if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault();
-      first.focus();
-    }
+function updateModal(node) {
+  state.modalId = node.id;
+  $("modal-image").src = node.image_url;
+  $("modal-image").alt = "Imatge ampliada de " + node.label;
+  $("modal-category").textContent = CATEGORY_LABELS[node.category] || titleCase(node.category);
+  $("modal-category").style.setProperty("--profile-color", nodeColor(node));
+  $("modal-title").textContent = node.label;
+  $("modal-description").textContent = node.description || "Sense documentació encara.";
+  $("modal-metadata").textContent = [TYPE_LABELS[node.type] || titleCase(node.type), node.epoch || "Sense data", node.author, titleCase(node.technique), node.exhibition, node.location].filter(Boolean).join(" · ");
+  $("image-position").textContent = (state.modalIds.indexOf(node.id) + 1) + " / " + state.modalIds.length;
+  $("previous-image").disabled = $("next-image").disabled = state.modalIds.length < 2;
+  if (originalObjectURL) URL.revokeObjectURL(originalObjectURL);
+  originalObjectURL = null;
+  const original = $("original-image");
+  // Data URLs cannot be opened at top level in some browsers. Download uploaded
+  // originals as attachments, which also avoids executing uploaded SVG documents.
+  if (node.image_url.startsWith("data:")) {
+    const [header, payload] = node.image_url.split(",");
+    const binary = atob(payload);
+    const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+    originalObjectURL = URL.createObjectURL(new Blob([bytes], { type: header.slice(5, header.indexOf(";")) }));
+    original.href = originalObjectURL;
+    const extension = header.includes("svg+xml") ? "svg" : header.slice(11, header.indexOf(";"));
+    original.download = node.label.replace(/[<>:"/\\|?*]/g, "-") + "." + extension;
+    original.textContent = "Descarrega l’original ↓";
+  } else {
+    original.href = node.image_url;
+    original.removeAttribute("download");
+    original.textContent = "Obre l’original ↗";
   }
 }
 
-function resetView() {
-  dom.svg.transition().duration(350).call(state.zoom.transform, d3.zoomIdentity);
-  if (state.view === "graph" && state.simulation) state.simulation.alpha(0.45).restart();
+function navigateModal(direction) {
+  const index = state.modalIds.indexOf(state.modalId);
+  const id = state.modalIds[(index + direction + state.modalIds.length) % state.modalIds.length];
+  const node = state.byId.get(id);
+  if (node) { selectNode(node); updateModal(node); }
 }
 
-function truncate(text, length) {
-  return text.length > length ? `${text.slice(0, length - 1)}…` : text;
+function zoomBy(factor) {
+  if (state.zoom && state.filteredNodes.length) svg.transition().duration(reducedMotion ? 0 : 180).call(state.zoom.scaleBy, factor);
+}
+
+function fitView(animate) {
+  if (!state.root || !state.zoom || !state.filteredNodes.length || state.view === "gallery") return;
+  const bounds = state.root.node().getBBox();
+  const { width, height } = $("visualization").getBoundingClientRect();
+  const availableHeight = Math.max(120, height - 200);
+  const scale = Math.max(.08, Math.min(1.15, (width - 60) / Math.max(bounds.width, 1), availableHeight / Math.max(bounds.height, 1)));
+  const transform = d3.zoomIdentity.translate(
+    width / 2 - (bounds.x + bounds.width / 2) * scale,
+    140 + availableHeight / 2 - (bounds.y + bounds.height / 2) * scale
+  ).scale(scale);
+  svg.interrupt();
+  if (animate && !reducedMotion) svg.transition().duration(300).call(state.zoom.transform, transform);
+  else svg.call(state.zoom.transform, transform);
 }
 
 loadData();

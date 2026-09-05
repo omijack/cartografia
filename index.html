@@ -3,141 +3,88 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="Cartografia interactiva del còmic expandit">
-    <title>Cartografia del còmic expandit</title>
+    <meta name="description" content="Un arxiu visual per documentar i connectar el còmic expandit i les seves exposicions.">
+    <title>Cartografia · Arxiu del còmic expandit</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+    <script defer src="js/repository.js"></script>
+    <script defer src="js/main.js"></script>
   </head>
   <body>
     <a class="skip-link" href="#visualization">Salta a la visualització</a>
-
     <header class="site-header">
-      <div>
-        <p class="eyebrow">Projecte de recerca doctoral</p>
-        <h1>Cartografia del còmic expandit</h1>
-      </div>
-      <div class="view-switcher" role="group" aria-label="Tipus de visualització">
-        <button class="view-button is-active" type="button" data-view="graph" aria-pressed="true">
-          <span aria-hidden="true">◌</span> Xarxa
-        </button>
-        <button class="view-button" type="button" data-view="timeline" aria-pressed="false">
-          <span aria-hidden="true">↦</span> Cronologia
-        </button>
-      </div>
+      <a class="brand" href="./" aria-label="Cartografia, inici">
+        <svg class="brand-mark" viewBox="0 0 40 40" fill="none" aria-hidden="true"><path d="M9 10 30 7 26 29 9 10 7 32 26 29" stroke="currentColor"/><rect x="4" y="5" width="10" height="10" rx="2" fill="currentColor"/><rect x="25" y="2" width="10" height="10" rx="2" fill="currentColor"/><rect x="21" y="24" width="10" height="10" rx="2" fill="currentColor"/><rect x="3" y="28" width="8" height="8" rx="2" fill="currentColor"/></svg>
+        <div><h1>Cartografia<span class="brand-dot">.</span></h1><p>Arxiu del còmic expandit</p></div>
+      </a>
+      <nav class="view-switcher" aria-label="Tipus de visualització">
+        <button class="view-button is-active" type="button" data-view="graph" aria-pressed="true"><span aria-hidden="true">⌘</span> Xarxa</button>
+        <button class="view-button" type="button" data-view="gallery" aria-pressed="false"><span aria-hidden="true">▦</span> Galeria</button>
+        <button class="view-button" type="button" data-view="timeline" aria-pressed="false"><span aria-hidden="true">↦</span> Cronologia</button>
+      </nav>
+      <button id="add-image" class="primary-button" type="button" disabled><span aria-hidden="true">＋</span> Afegeix imatge</button>
     </header>
-
     <main class="app-shell">
-      <aside class="sidebar" aria-label="Controls i informació">
+      <aside class="sidebar" aria-label="Filtres de l’arxiu">
         <section class="control-panel" aria-labelledby="filters-title">
-          <div class="section-heading">
-            <div>
-              <p class="section-kicker">Explora</p>
-              <h2 id="filters-title">Filtres</h2>
-            </div>
-            <button id="clear-filters" class="text-button" type="button">Neteja</button>
-          </div>
-
-          <label class="field">
-            <span>Cerca</span>
-            <span class="search-control">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.35-4.35m2.35-5.65a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z"/></svg>
-              <input id="search" type="search" placeholder="Títol, tècnica..." autocomplete="off">
-            </span>
-          </label>
-
-          <label class="field">
-            <span>Tipus</span>
-            <select id="filter-type"><option value="all">Tots els tipus</option></select>
-          </label>
-
-          <label class="field">
-            <span>Categoria</span>
-            <select id="filter-category"><option value="all">Totes les categories</option></select>
-          </label>
-
-          <label class="field">
-            <span>Època</span>
-            <select id="filter-epoch"><option value="all">Totes les èpoques</option></select>
-          </label>
-
-          <p id="result-count" class="result-count" aria-live="polite">Carregant el corpus…</p>
-          <div id="legend" class="legend" aria-label="Llegenda de categories"></div>
-        </section>
-
-        <section id="info-panel" class="info-panel" aria-labelledby="panel-title">
-          <div id="empty-state" class="empty-state">
-            <span class="empty-mark" aria-hidden="true">✦</span>
-            <h2 id="panel-title">Descobreix el corpus</h2>
-            <p>Selecciona un node per veure’n la fitxa, la imatge i les connexions.</p>
-          </div>
-
-          <div id="profile" class="profile" hidden>
-            <button id="panel-image-button" class="panel-image-button" type="button" aria-label="Obre la imatge ampliada">
-              <img id="panel-image" src="" alt="">
-              <span>Amplia la imatge</span>
-            </button>
-            <div class="profile-copy">
-              <p id="panel-category" class="profile-category"></p>
-              <h2 id="profile-title"></h2>
-              <p id="panel-description" class="profile-description"></p>
-              <dl class="metadata">
-                <div><dt>Tipus</dt><dd id="panel-type"></dd></div>
-                <div><dt>Època</dt><dd id="panel-epoch"></dd></div>
-                <div><dt>Tècnica</dt><dd id="panel-technique"></dd></div>
-              </dl>
-              <div class="connections">
-                <h3>Connexions</h3>
-                <ul id="panel-connections-list"></ul>
-              </div>
-            </div>
+          <p class="section-kicker">Un arxiu de connexions</p>
+          <div class="section-heading"><h2 id="filters-title">Explora el corpus</h2><button id="clear-filters" class="text-button" type="button">Neteja</button></div>
+          <label class="field search-field"><span>Cerca a l’arxiu</span><span class="search-control"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.35-4.35m2.35-5.65a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z"/></svg><input id="search" type="search" placeholder="Títol, exposició, autoria…" autocomplete="off"></span></label>
+          <label class="field"><span>Tipus d’element</span><select id="filter-type"><option value="all">Tots els tipus</option></select></label>
+          <label class="field"><span>Categoria</span><select id="filter-category"><option value="all">Totes les categories</option></select></label>
+          <label class="field"><span>Època</span><select id="filter-epoch"><option value="all">Totes les èpoques</option></select></label>
+          <div class="legend-section"><h3>Tipus de nodes</h3><div id="legend" class="legend" aria-label="Filtra per tipus de node"></div></div>
+          <div class="display-settings" id="display-settings">
+            <h3>Visualització</h3>
+            <label class="range-label" for="node-size">Mida de les imatges <output id="size-value" for="node-size">M</output></label>
+            <input id="node-size" type="range" min="64" max="136" step="8" value="96">
+            <label class="toggle-label"><span>Mostra els títols</span><input id="show-labels" type="checkbox" checked></label>
+            <label class="toggle-label"><span>Només les connexions</span><input id="focus-related" type="checkbox" disabled></label>
+            <p class="field-hint">Selecciona una fitxa per aïllar les seves connexions.</p>
           </div>
         </section>
+        <footer class="sidebar-footer"><span class="status-dot" aria-hidden="true"></span><span id="storage-status">Corpus de mostra</span><p>Documenta una imatge.<br>Descobreix una relació.</p><div class="backup-actions"><button id="export-data" class="text-button" type="button" disabled>Exporta l’arxiu ↗</button><button id="import-data" class="text-button" type="button" disabled>Importa</button><input id="import-file" type="file" accept="application/json,.json" hidden></div></footer>
       </aside>
-
       <section id="visualization" class="visualization" aria-label="Cartografia interactiva" tabindex="-1">
-        <div class="canvas-toolbar">
-          <p id="view-description">Relacions entre obres, autories, corrents i tècniques</p>
-          <button id="reset-view" class="icon-button" type="button" title="Centra la visualització" aria-label="Centra la visualització">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
-          </button>
-        </div>
-        <svg id="graph" role="img" aria-labelledby="graph-title graph-description">
-          <title id="graph-title">Xarxa del còmic expandit</title>
-          <desc id="graph-description">Graf interactiu. Utilitza el tabulador per recórrer els nodes i Retorn per obrir una obra.</desc>
-        </svg>
+        <div class="canvas-toolbar"><div><p class="section-kicker" id="view-kicker">El mapa de l’arxiu</p><h2 id="view-title">Tot està connectat.</h2><p id="result-count" aria-live="polite">Carregant el corpus…</p></div><span class="canvas-badge" id="view-badge">VISTA DE XARXA</span></div>
+        <svg id="graph" role="group" aria-labelledby="graph-title graph-description"><title id="graph-title">Xarxa del còmic expandit</title><desc id="graph-description">Cada miniatura és una imatge de l’arxiu. Tabulador per recórrer-les, Retorn per ampliar i espai per consultar la fitxa. Arrossega per moure i fes zoom per explorar.</desc></svg>
+        <div id="gallery" class="gallery" aria-label="Galeria d’imatges" hidden></div>
+        <div class="canvas-bottom" id="canvas-bottom"><p id="view-description"><span aria-hidden="true">↔</span> Arrossega per explorar · Clic per ampliar · Espai per veure la fitxa</p><div class="zoom-controls" role="group" aria-label="Controls del mapa"><button id="pause-layout" class="icon-button" type="button" aria-label="Pausa el moviment" aria-pressed="false" title="Pausa el moviment">Ⅱ</button><span class="control-divider"></span><button id="zoom-out" class="icon-button" type="button" aria-label="Allunya">−</button><output id="zoom-value" aria-label="Nivell de zoom">100%</output><button id="zoom-in" class="icon-button" type="button" aria-label="Apropa">＋</button><button id="reset-view" class="icon-button" type="button" title="Enquadra tot el mapa" aria-label="Enquadra tot el mapa"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button></div></div>
         <div id="tooltip" class="tooltip" role="tooltip" hidden></div>
-        <div id="loading" class="loading" role="status">
-          <span class="loader" aria-hidden="true"></span>
-          <span>Construint la cartografia…</span>
-        </div>
-        <div id="no-results" class="no-results" hidden>
-          <span aria-hidden="true">∅</span>
-          <h2>Cap coincidència</h2>
-          <p>Prova una altra combinació de filtres.</p>
-        </div>
+        <div id="loading" class="loading" role="status"><span class="loader" aria-hidden="true"></span><span>Construint la cartografia…</span></div>
+        <div id="no-results" class="no-results" hidden><span aria-hidden="true">⌕</span><h2>Cap coincidència</h2><p>Prova un altre terme o torna a veure tot l’arxiu.</p><button id="empty-clear" class="secondary-button" type="button">Neteja els filtres</button></div>
       </section>
+      <aside id="info-panel" class="info-panel" aria-label="Fitxa de la imatge">
+        <div class="inspector-heading"><p class="section-kicker">Quadern de l’arxiu</p><button id="clear-selection" class="icon-button" aria-label="Tanca la fitxa" type="button" hidden>×</button></div>
+        <div id="empty-state" class="empty-state"><div class="empty-illustration" aria-hidden="true"><span>▧</span><span>▧</span><span>▧</span></div><h2>Cada imatge,<br>una història.</h2><p>Obre una miniatura per descobrir-ne la documentació i seguir el fil de les seves connexions.</p><div class="inspector-guide"><span>01</span><p>Explora les imatges del mapa</p><span>02</span><p>Consulta i completa les fitxes</p><span>03</span><p>Connecta obres i exposicions</p></div></div>
+        <div id="profile" class="profile" hidden>
+          <button id="panel-image-button" class="panel-image-button" type="button" aria-label="Obre la imatge ampliada"><img id="panel-image" alt=""><span>Amplia ↗</span></button>
+          <div class="profile-copy"><p id="panel-category" class="profile-category"></p><h2 id="profile-title"></h2><p id="panel-description" class="profile-description"></p><button id="edit-image" class="secondary-button full-width" type="button">Edita la fitxa i les relacions ↗</button><dl id="panel-metadata" class="metadata"></dl><div class="connections"><h3>Connexions <span id="connection-count"></span></h3><ul id="panel-connections-list"></ul></div></div>
+        </div>
+      </aside>
     </main>
-
-    <div id="image-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" hidden>
-      <div class="modal-backdrop" data-close-modal></div>
-      <div class="modal-content">
-        <button class="close-modal" type="button" aria-label="Tanca la imatge" data-close-modal>×</button>
-        <figure>
-          <img id="modal-image" src="" alt="">
-          <figcaption class="modal-info">
-            <p id="modal-category" class="modal-category"></p>
-            <h2 id="modal-title"></h2>
-            <p id="modal-description"></p>
-            <p id="modal-metadata" class="modal-metadata"></p>
-          </figcaption>
-        </figure>
-      </div>
-    </div>
-
+    <dialog id="image-modal" class="image-dialog" aria-labelledby="modal-title">
+      <button class="close-modal icon-button" type="button" aria-label="Tanca la imatge" data-close-modal>×</button>
+      <figure><div class="modal-image-wrap"><img id="modal-image" alt=""><div class="image-navigation"><button id="previous-image" class="secondary-button" type="button" aria-label="Imatge anterior">←</button><span id="image-position"></span><button id="next-image" class="secondary-button" type="button" aria-label="Imatge següent">→</button></div></div><figcaption class="modal-info"><p id="modal-category" class="profile-category"></p><h2 id="modal-title"></h2><p id="modal-description"></p><p id="modal-metadata" class="modal-metadata"></p><button id="modal-inspect" class="primary-button" type="button">Consulta la fitxa <span aria-hidden="true">↗</span></button><a id="original-image" class="text-button" target="_blank" rel="noopener">Obre l’original ↗</a></figcaption></figure>
+    </dialog>
+    <dialog id="editor-dialog" class="editor-dialog" aria-labelledby="editor-title">
+      <form id="editor-form">
+        <div class="editor-heading"><div><p class="section-kicker">Documenta l’arxiu</p><h2 id="editor-title">Afegeix una imatge</h2></div><button id="close-editor" class="icon-button" type="button" aria-label="Tanca l’editor">×</button></div>
+        <p class="editor-notice">Es desa en aquest navegador. Exporta l’arxiu per conservar-ne una còpia.</p>
+        <div class="editor-grid"><label class="upload-area" for="image-file"><img id="editor-preview" alt="Previsualització de la imatge" hidden><span aria-hidden="true">＋</span><strong id="upload-label">Tria una imatge</strong><small>JPG, PNG, WebP, GIF o SVG · màxim 10 MB</small><input id="image-file" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml"></label><div><label class="field"><span>Títol *</span><input name="label" required maxlength="160" placeholder="Títol de l’obra o de la imatge"></label><label class="field"><span>Autoria</span><input name="author" maxlength="200" placeholder="Nom de l’autor o autora"></label><div class="form-pair"><label class="field"><span>Tipus *</span><select name="type" required><option value="obra">Obra</option><option value="autor">Autoria</option><option value="exposicio">Exposició</option><option value="corrent">Corrent</option><option value="tecnica">Tècnica</option><option value="tema">Tema</option></select></label><label class="field"><span>Categoria *</span><input name="category" list="category-options" required maxlength="100" placeholder="Contemporanis"></label></div></div></div>
+        <datalist id="category-options"></datalist>
+        <div class="form-pair"><label class="field"><span>Època / any</span><input name="epoch" maxlength="80" placeholder="2026 o 2020–2026"></label><label class="field"><span>Tècnica</span><input name="technique" maxlength="200" placeholder="Tinta, instal·lació, collage…"></label><label class="field"><span>Exposició</span><input name="exhibition" maxlength="200" placeholder="Nom de l’exposició"></label><label class="field"><span>Localització</span><input name="location" maxlength="200" placeholder="Museu, sala, ciutat…"></label></div>
+        <label class="field"><span>Documentació</span><textarea name="description" rows="4" maxlength="10000" placeholder="Descriu la imatge, el context i les notes de recerca…"></textarea></label>
+        <section class="relation-editor" aria-labelledby="relation-editor-title"><div class="section-heading"><h3 id="relation-editor-title">Relacions amb altres imatges</h3><span id="draft-relation-count" class="count-badge">0</span></div><ul id="draft-relations"></ul><div class="relation-fields"><label class="field"><span>Imatge relacionada</span><select id="relation-target"><option value="">Selecciona una imatge</option></select></label><label class="field"><span>Tipus de relació</span><input id="relation-type" list="relation-options" maxlength="100" placeholder="Afinitat, autoria…"></label><button id="add-relation" class="secondary-button" type="button">＋ Connecta</button></div><datalist id="relation-options"><option value="Afinitat"></option><option value="Autoria"></option><option value="Influència"></option><option value="Mateixa exposició"></option><option value="Mateixa tècnica"></option></datalist><p class="field-hint">Les connexions es desen quan deses la fitxa.</p></section>
+        <p id="editor-error" class="form-error" role="alert" hidden></p>
+        <div class="editor-footer"><button id="cancel-editor" class="secondary-button" type="button">Cancel·la</button><button id="save-image" class="primary-button" type="submit">Desa la fitxa</button></div>
+      </form>
+    </dialog>
+    <dialog id="import-dialog" class="editor-dialog import-dialog" aria-labelledby="import-title"><form method="dialog"><p class="section-kicker">Recupera una còpia</p><h2 id="import-title">Importa l’arxiu</h2><p id="import-summary"></p><p>L’arxiu importat substituirà el corpus d’aquest navegador. Exporta primer els canvis que vulguis conservar.</p><p id="import-error" class="form-error" role="alert" hidden></p><div class="editor-footer"><button class="secondary-button" value="cancel">Cancel·la</button><button id="confirm-import" class="primary-button" type="button">Importa i substitueix</button></div></form></dialog>
+    <div id="toast" class="toast" role="status" hidden></div>
     <noscript>Aquesta visualització necessita JavaScript activat.</noscript>
-    <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
-    <script src="js/main.js"></script>
   </body>
 </html>
